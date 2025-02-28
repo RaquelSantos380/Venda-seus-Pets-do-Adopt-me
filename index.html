@@ -109,10 +109,11 @@
         <img src="aba.jpg" alt="Logo do Adopt Me">
         <h1 class="title">Venda seu pet para gente!</h1>
         <div class="success-message" id="successMessage">Oferta enviada com sucesso! 🎉</div>
-        <form id="petForm" onsubmit="sendEmail(event)">
+        <form id="petForm">
             <input type="text" id="nick" placeholder="Seu Nick (obrigatório)" required>
             <input type="email" id="email" placeholder="Seu E-mail (obrigatório)" required>
             <textarea id="petInfo" placeholder="Conte-nos sobre o pet e o valor que deseja (ex: Nome do Pet, Valor, etc.)" required></textarea>
+            <input type="file" id="petImage" accept="image/*" required>
             <button type="submit">Enviar Oferta 💌</button>
         </form>
         <div class="footer">
@@ -132,35 +133,60 @@
         // Inicialize o EmailJS com seu User ID
         emailjs.init("y2Y2FotVDMytchPMg");
 
-        function sendEmail(event) {
+        // Função para fazer upload da imagem no Cloudinary
+        async function uploadImageToCloudinary(file) {
+            const cloudinaryUrl = "https://api.cloudinary.com/v1_1/dp5dvbuq6/upload"; // Substitua pelo seu Cloud Name
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("upload_preset", "meu_preset"); // Substitua pelo seu Upload Preset
+
+            const response = await fetch(cloudinaryUrl, {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await response.json();
+            return data.secure_url; // Retorna o link público da imagem
+        }
+
+        // Função para enviar o e-mail
+        async function sendEmail(event) {
             event.preventDefault();
 
-            const serviceID = "service_uto6ltk";
+            const serviceID = "service_uto6ltk"; // Substitua pelo seu Service ID
             const templateID = "template_ywc2wly"; // Substitua pelo seu Template ID
 
             const nick = document.getElementById('nick').value;
             const email = document.getElementById('email').value;
             const petInfo = document.getElementById('petInfo').value;
+            const petImage = document.getElementById('petImage').files[0];
 
-            console.log("Dados enviados:", { from_name: nick, from_email: email, pet_info: petInfo });
+            try {
+                // Faz upload da imagem no Cloudinary
+                const imageUrl = await uploadImageToCloudinary(petImage);
 
-            emailjs.send(serviceID, templateID, {
-                from_name: nick,
-                from_email: email,
-                pet_info: petInfo
-            }).then((response) => {
-                console.log("E-mail enviado com sucesso!", response);
-                const successMessage = document.getElementById('successMessage');
-                successMessage.style.display = 'block';
+                // Envia o e-mail com os dados e o link da imagem
+                await emailjs.send(serviceID, templateID, {
+                    from_name: nick,
+                    from_email: email,
+                    pet_info: petInfo,
+                    pet_image: imageUrl // Link da imagem hospedada
+                });
+
+                // Exibe a mensagem de sucesso
+                document.getElementById('successMessage').style.display = 'block';
                 document.getElementById('petForm').reset();
                 setTimeout(() => {
-                    successMessage.style.display = 'none';
+                    document.getElementById('successMessage').style.display = 'none';
                 }, 3000);
-            }, (err) => {
-                console.error("Erro ao enviar e-mail:", err);
-                alert('Falha ao enviar, tente novamente: ' + JSON.stringify(err));
-            });
+            } catch (error) {
+                console.error("Erro ao enviar e-mail:", error);
+                alert('Falha ao enviar, tente novamente: ' + JSON.stringify(error));
+            }
         }
+
+        // Adiciona o evento de submit ao formulário
+        document.getElementById('petForm').addEventListener('submit', sendEmail);
     </script>
 </body>
-</html>
+</html>s
